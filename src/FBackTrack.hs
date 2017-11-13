@@ -6,7 +6,7 @@
 
 module FBackTrack (
     Stream(..)
-    , runM
+    --, runM
 )where
 
 import Control.Applicative
@@ -23,7 +23,7 @@ instance Functor Stream where
 instance Applicative Stream where
   pure = One
   (<*>) = ap
-  
+
 instance Monad Stream where
   return = One
 
@@ -43,13 +43,13 @@ instance MonadPlus Stream where
   mplus (One a) r'      = Choice a r'
   mplus (Choice a r) r' = Choice a (mplus r' r) -- interleaving!
   --mplus (Incomplete i) r' = Incomplete (mplus i r')
-  mplus r@(Incomplete i) r' = 
+  mplus r@(Incomplete i) r' =
       case r' of
-	      Nil         -> r
-	      One b       -> Choice b i
-	      Choice b r'' -> Choice b (mplus i r'')
-	      -- Choice _ _ -> Incomplete (mplus r' i)
-	      Incomplete j -> Incomplete (mplus i j)
+            Nil         -> r
+            One b       -> Choice b i
+            Choice b r'' -> Choice b (mplus i r'')
+            -- Choice _ _ -> Incomplete (mplus r' i)
+            Incomplete j -> Incomplete (mplus i j)
 
 
 -- run the Monad, to a specific depth
@@ -57,7 +57,7 @@ runM :: Maybe Int -> Stream a -> [a]
 runM _ Nil = []
 runM _ (One a) = [a]
 runM d (Choice a r) = a : (runM d r)
-runM (Just 0) (Incomplete _) = []	-- exhausted depth
+runM (Just 0) (Incomplete _) = [] -- exhausted depth
 runM d (Incomplete r) = runM d' r
     where d' = d >>= (return . (+ (-1)))
 
@@ -78,13 +78,13 @@ pythagorean_triples =
     guard $ i*i + j*j == k*k
     return (i,j,k)
 
-test :: [(Int, Int, Int)]
-test = take 7 $ runM Nothing pythagorean_triples
+--test :: [(Int, Int, Int)]
+--test = take 7 $ runM Nothing pythagorean_triples
 
 -- The following code is not in general MonadPlus: it uses Incomplete
 -- explicitly. But it supports left recursion! Note that in OCaml, for example,
 -- we _must_ include that Incomplete data constructor to make
--- the recursive definition well-formed.  
+-- the recursive definition well-formed.
 -- The code does *not* get stuck in the generation of primitive tuples
 -- like (0,1,1), (0,2,2), (0,3,3) etc.
 pythagorean_triples' :: Stream (Int, Int, Int)
@@ -97,17 +97,17 @@ pythagorean_triples' =
     guard $ i*i + j*j == k*k
     return (i,j,k)
 
-test' :: [(Int, Int, Int)]
-test' = take 27 $ runM Nothing pythagorean_triples'
+--test' :: [(Int, Int, Int)]
+--test' = take 27 $ runM Nothing pythagorean_triples'
 
 
 -- a serious test of left recursion (due to Will Byrd)
-flaz :: (Num a, Eq a) => a -> Stream a
-flaz x = Incomplete (flaz x) `mplus` (Incomplete (flaz x) `mplus`
-				      if x == 5 then return x else mzero)
+--flaz :: (Num a, Eq a) => a -> Stream a
+--flaz x = Incomplete (flaz x) `mplus` (Incomplete (flaz x) `mplus`
+--                            if x == 5 then return x else mzero)
 
-test_flaz :: [Int]
-test_flaz = take 15 $ runM Nothing (flaz 5)
+--test_flaz :: [Int]
+--test_flaz = take 15 $ runM Nothing (flaz 5)
 
 -- `Don't care non-determinism'
 --  (once m) non-deterministically returns one of the results produced
@@ -119,5 +119,5 @@ class MonadPlus m => MonadPlusOnce m where
 instance MonadPlusOnce Stream where
     once Nil = Nil
     once x@One{} = x
-    once (Choice a r)   = One a         -- disregard the rest
+    once (Choice a _)   = One a         -- disregard the rest
     once (Incomplete r) = Incomplete (once r)

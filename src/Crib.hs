@@ -11,7 +11,7 @@ module Crib (
 ) where
 
 
-import Data.Monoid
+import Data.Monoid()
 import Data.Map as M
 import Data.List as L
 
@@ -34,7 +34,7 @@ instance Monoid Crib where
 
 -- | Check to see if two cribs are consistant
 consistant :: Crib -> Crib -> Bool
-consistant (Crib d1 m1) (Crib d2 m2) = M.foldWithKey (\ct pt acc -> acc && (m1!ct == m2!ct)) True $ m1 `M.intersection` m2
+consistant (Crib _ m1) (Crib _ m2) = M.foldWithKey (\ct _ acc -> acc && (m1!ct == m2!ct)) True $ m1 `M.intersection` m2
 
 -- | Get the list of potential plain text characters
 lookup :: Crib -> Char -> [Char]

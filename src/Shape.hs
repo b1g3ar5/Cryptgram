@@ -1,6 +1,6 @@
 module Shape
     (
-    ShapeDict(..)
+      ShapeDict
     , toShape
     , Shape.addWord
     ) where
@@ -22,15 +22,15 @@ type Shape = Int
 -- Works out the shape of a word
 toShape :: String -> Shape
 toShape [] = 0
-toShape (c:[]) = 1
+toShape (_:[]) = 1
 toShape cs = L.foldl (\acc (a,b) -> acc + a*10^b) 0 $ zip (go [] M.empty cs) [0..]
     where
         go :: [Int] -> M.Map Char Int -> String -> [Int]
         go ns _ [] = reverse ns
-        go ns mp (c:cs) = go (ns ++ [ix]) newMp cs
+        go ns mp (c:cs2) = go (ns ++ [ix]) newMp cs2
             where
                 n = size mp
-                newMp = insertWith (\new old -> old) c (n+1) mp
+                newMp = insertWith (\_ old -> old) c (n+1) mp
                 ix = newMp!c
 
 -- The shape dictionary saves words according to their shape. Words of the same shape are stored in a Dict (ie. a Rose Tree)
@@ -38,7 +38,7 @@ type ShapeDict = Map Int Dict
 
 -- | Adds a word to a ShapeDict
 addWord :: ShapeDict -> String -> Double -> ShapeDict
-addWord dd wd f = insertWith (\new old -> Dict.addWord old wd f) sh newdd dd
+addWord dd wd f = insertWith (\_ old -> Dict.addWord old wd f) sh newdd dd
     where
         sh = toShape wd
         newdd = Dict.addWord [] wd f

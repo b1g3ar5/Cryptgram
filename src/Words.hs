@@ -43,7 +43,7 @@ shapeDecrypt dd wds = map (\w -> applyCrib (proposedCribs!!0) w) wds
     where
         ctIns = reverse $ map fst $ sortWith snd $ zip wds $ map length wds            
         -- Work out a list of cribs for each word
-        (proposedCribs, acceptedCribs) = foldl (getNext dd) ([emptyCrib], [emptyCrib]) ctIns
+        (proposedCribs, _) = foldl (getNext dd) ([emptyCrib], [emptyCrib]) ctIns
 
 getNext :: ShapeDict -> ([Crib], [Crib]) -> String -> ([Crib], [Crib])
 getNext dd (proposed, accepted) ct = if (length next == 0) then (accepted, accepted) else (next, proposed)
@@ -141,8 +141,8 @@ addCribs dd cbs ct = L.concat $ L.zipWith (\pts cb -> L.map (\pt -> addCrib cb c
 subDict:: Dict -> Crib -> String -> Dict
 subDict [] _ _ = []
 subDict _ _ [] = []
-subDict (t:ts) cb chs@(c:[]) = case compare (ch $ lt) pc of
-                                     EQ -> (if (labelIsWord lt) then [Node (Label (ch $ lt) (logFreq lt) $ 1) []] else []) ++ subDict ts cb chs
+subDict (t:ts) cb chs@(c:[]) = case compare (lch $ lt) pc of
+                                     EQ -> (if (labelIsWord lt) then [Node (Label (lch $ lt) (llogFreq lt) $ 1) []] else []) ++ subDict ts cb chs
                                      LT -> subDict ts cb chs
                                      -- For plain text characters this means no words
                                      -- but for cipher text we need to check the LT trees
@@ -151,20 +151,20 @@ subDict (t:ts) cb chs@(c:[]) = case compare (ch $ lt) pc of
                                     lt = rootLabel t
                                     -- If it's cipher text and the label character is a potiential fit
                                     -- then make the compare ==
-                                    pc = if (isCipherText c)&&((ch lt) `L.elem` (Crib.lookup cb c)) then ch lt else c
-subDict (t:ts) cb chs@(c:cs) = case compare (ch $ lt) pc of
+                                    pc = if (isCipherText c)&&((lch lt) `L.elem` (Crib.lookup cb c)) then lch lt else c
+subDict (t:ts) cb chs@(c:cs) = case compare (lch $ lt) pc of
                                      EQ -> case sd of 
                                                 []        -> subDict ts cb chs
-                                                otherwise -> [Node (Label (ch $ lt) (logFreq lt) $ wordCount sd) $ sd] ++ subDict ts cb chs
+                                                _ -> [Node (Label (lch $ lt) (llogFreq lt) $ wordCount sd) $ sd] ++ subDict ts cb chs
                                            where
-                                                sd = subDict (subForest t) (Crib.insert cb c (ch lt)) cs
+                                                sd = subDict (subForest t) (Crib.insert cb c (lch lt)) cs
                                      LT -> subDict ts cb chs
                                      GT -> if (isCipherText c) then (subDict ts cb chs) else []
                                 where
                                     lt = rootLabel t
                                     -- If it's cipher text and the label character is a potiential fit
                                     -- then make the compare ==
-                                    pc = if (isCipherText c)&&((ch lt) `L.elem` (Crib.lookup cb c)) then ch lt else c
+                                    pc = if (isCipherText c)&&((lch lt) `L.elem` (Crib.lookup cb c)) then lch lt else c
 
 -- Note the label saves -log(freq). I did this so they would add over words, but this is
 -- not used yet.

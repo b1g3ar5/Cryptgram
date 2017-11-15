@@ -9,7 +9,7 @@ module Label (
 import Data.Char
 
 -- | The Label type has a character (ie. the one in the word), a frequency
--- which is the frequency in (English) text that the word exhibits (ie. 0
+-- which is the frequency in (English) text that the word exhibits (ie. 1000 = log 0)
 -- if it is not the end of a word) and a count which is the numbers of words
 -- in the branch.
 data Label = Label {lch::Char, llogFreq::Double, lcount::Int}
@@ -39,5 +39,3 @@ isCipherText = isUpper
 -- or the log frequency < 1000.0
 labelIsWord :: Label -> Bool
 labelIsWord l = llogFreq l < notWord
-
-

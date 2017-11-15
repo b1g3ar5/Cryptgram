@@ -8,12 +8,15 @@ module Words
         , scoreCrib
         , addCribs
         , getDict
+        , smallDict
         , getShapeDict
         , subDict
         , top
         , nextShapeCribs
         , nextCribs
         , getNext
+        , allWordSplits
+        , wordLengths
     ) where
 
 import Control.Monad.Logic
@@ -31,35 +34,43 @@ import Shape
 import FBackTrack
 
 
--- There's a problem here when one of the initial words is not in the dictionary, but has a 
--- word of the same shape in the dictionary. This narrows down the crib set too much and we
--- need to find a way of throwing the cipher text and it's cribs away and starting on the
--- next word.
+wordLengths :: [Int]
+wordLengths = [3,2,4,5,6,7,8,9,10,1,11]
+
+
+allWordSplits :: Dict -> String -> [[String]]
+allWordSplits _ [] = [[]]
+allWordSplits dd rest = concatMap (\ix ->
+                                    fmap (\wds -> (take (wordLengths!!ix) rest) : wds
+                                         ) $ allWordSplits dd (drop (wordLengths!!ix) rest)
+                                  ) $ filter (\i-> (wordLengths!!i) <= n) [0..10]
+  where
+    n = length rest
 
 -- | This decrypter uses the ShapeDict dictionary rather than the alphabetical one
 -- It is a lot quicker!
 shapeDecrypt :: ShapeDict -> [String] -> [String]
-shapeDecrypt dd wds = map (\w -> applyCrib (proposedCribs!!0) w) wds
+shapeDecrypt dict wds = map (applyCrib (head proposedCribs)) wds
     where
-        ctIns = reverse $ map fst $ sortWith snd $ zip wds $ map length wds            
+        ctIns = reverse $ map fst $ sortWith snd $ zip wds $ map length wds
         -- Work out a list of cribs for each word
-        (proposedCribs, _) = foldl (getNext dd) ([emptyCrib], [emptyCrib]) ctIns
+        (proposedCribs, _) = foldl (getNext dict) ([emptyCrib], [emptyCrib]) ctIns
 
 getNext :: ShapeDict -> ([Crib], [Crib]) -> String -> ([Crib], [Crib])
-getNext dd (proposed, accepted) ct = if (length next == 0) then (accepted, accepted) else (next, proposed)
+getNext dict (proposed, accepted) ct = if null next then (accepted, accepted) else (next, proposed)
     where
-        next = nextShapeCribs dd proposed ct
+        next = nextShapeCribs dict proposed ct
 
 -- | Uses the dictionary and the input cribs to work out potential plain texts tor the input cipher text
 -- and expands or contracts the set of cribs over all these.
 -- The resulting set of cribs will respect one of the input cribs and a potential plain text.
 nextShapeCribs :: ShapeDict -> [Crib] -> String -> [Crib]
-nextShapeCribs dd cbs ctIn = concat $ zipWith3 (\pts ct cb -> map (\pt -> addCrib cb ct pt) pts) ptss cts cbs
+nextShapeCribs dict cbs ctIn = concat $ zipWith3 (\pts ct cb -> map (addCrib cb ct) pts) ptss cts cbs
     where
         -- Apply the input cribs to the cipher text
-        cts = map (\cb -> applyCrib cb ctIn) cbs                
+        cts = map (`applyCrib` ctIn) cbs
         -- Get the potential plain texts for each of these texts
-        ptss = zipWith (\ct cb -> top 50 (fromJust $ Map.lookup (toShape ct) dd) cb ct) cts cbs    
+        ptss = zipWith (\ct cb -> top 50 (fromJust $ Map.lookup (toShape ct) dict) cb ct) cts cbs
 
 
 -- | These decryptors use the Dict and Cribs 2, 3 and 4 use backtracking using
@@ -68,7 +79,7 @@ nextShapeCribs dd cbs ctIn = concat $ zipWith3 (\pts ct cb -> map (\pt -> addCri
 
 -- | Decrypts a cryptogram
 decrypt2 :: Dict -> [String] -> [[String]]
-decrypt2 dd wds = do 
+decrypt2 dd wds = do
         wd <- wds
         -- Work out a set of cribs for each word
         cb <- foldl (\cb ct -> nextCribs dd cb ct) [emptyCrib] wds
@@ -79,7 +90,7 @@ decrypt2 dd wds = do
 
 -- | Decrypts a cryptogram
 decrypt3 :: Dict -> [String] -> Logic [String]
-decrypt3 dd wds = do 
+decrypt3 dd wds = do
         wd <- (msum .map return) wds
         -- Work out a set of cribs for each word
         cb <- (msum .map return) $ foldl (\cb ct -> nextCribs dd cb ct) [emptyCrib] wds
@@ -90,7 +101,7 @@ decrypt3 dd wds = do
 
 -- | Decrypts a cryptogram
 decrypt4 :: Dict -> [String] -> Stream [String]
-decrypt4 dd wds = do 
+decrypt4 dd wds = do
         wd <- (msum .map return) wds
         -- Work out a set of cribs for each word
         cb <- (msum .map return) $ foldl (\cb ct -> nextCribs dd cb ct) [emptyCrib] wds
@@ -104,9 +115,9 @@ decrypt4 dd wds = do
 decrypt :: Dict -> [String] -> [String]
 decrypt dd wds = map (\w -> applyCrib (cbs!!0) w) wds
     where
-        -- Filter out words not in the dictionary         
+        -- Filter out words not in the dictionary
         filteredWords = filter (\w -> wordCount (subDict dd emptyCrib w) > 0) wds
-        ctIns = reverse $ map fst $ sortWith snd $ zip filteredWords $ map length filteredWords            
+        ctIns = reverse $ map fst $ sortWith snd $ zip filteredWords $ map length filteredWords
         -- Work out a list of cribs for each word
         cbs = foldl (\cb ct -> nextCribs dd cb ct) [emptyCrib] ctIns
 
@@ -117,9 +128,9 @@ nextCribs :: Dict -> [Crib] -> String -> [Crib]
 nextCribs dd cbs ctIn = concat $ zipWith3 (\pts ct cb -> map (\pt -> addCrib cb ct pt) pts) ptss cts cbs
     where
         -- Apply the input cribs to the cipher text
-        cts = map (\cb -> applyCrib cb ctIn) cbs                
+        cts = map (\cb -> applyCrib cb ctIn) cbs
         -- Get the potential plain texts for each of these texts
-        ptss = zipWith (\ct cb -> top 50 dd cb ct) cts cbs    
+        ptss = zipWith (\ct cb -> top 50 dd cb ct) cts cbs
 
 scoreCrib :: Dict -> [String] -> Crib -> Double
 scoreCrib dd wds cb = L.sum $ L.map ((wordLogFreq dd).(applyCrib cb)) wds
@@ -153,7 +164,7 @@ subDict (t:ts) cb chs@(c:[]) = case compare (lch $ lt) pc of
                                     -- then make the compare ==
                                     pc = if (isCipherText c)&&((lch lt) `L.elem` (Crib.lookup cb c)) then lch lt else c
 subDict (t:ts) cb chs@(c:cs) = case compare (lch $ lt) pc of
-                                     EQ -> case sd of 
+                                     EQ -> case sd of
                                                 []        -> subDict ts cb chs
                                                 _ -> [Node (Label (lch $ lt) (llogFreq lt) $ wordCount sd) $ sd] ++ subDict ts cb chs
                                            where
@@ -171,7 +182,7 @@ subDict (t:ts) cb chs@(c:cs) = case compare (lch $ lt) pc of
 getDict::IO Dict
 getDict = do
     ls<-readFile("./data/Gutenberg2006.txt")
-    let wds = L.map toWordAndFreq $ lines ls
+    let wds = L.map toWordAndFreq $ take 50000 $ lines ls
     let s = L.foldl (\d wf -> Dict.addWord d (fst wf) (snd wf)) ([]::Dict) wds
     return s
     where
@@ -199,5 +210,16 @@ getShapeDict = do
                 f =  -(log $ (read $ ws!!2)*0.000000001) -- the number in the file is occurrences in 1bn words
 
 
-
-
+smallDict::IO Dict
+smallDict = do
+    ls<-readFile("./data/SmallDict.txt")
+    let wds = L.map toWordAndFreq $ lines ls
+    let s = L.foldl (\d wf -> Dict.addWord d (fst wf) (snd wf)) ([]::Dict) wds
+    return s
+    where
+        toWordAndFreq ss = (w, f)
+            where
+                -- The line is [rank, word, freq]
+                ws = words ss
+                w = L.filter (\c -> c `L.elem` alphabet) $ L.map toLower $ ws!!1
+                f =  -(log $ (read $ ws!!2)*0.000000001) -- the number in the file is occurrences in 1bn words

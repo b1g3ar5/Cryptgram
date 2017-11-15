@@ -7,9 +7,11 @@ module TestWords
 
 import Data.List
 import Data.Char
+import Data.Tree
 
 import FBackTrack
 import Dict
+import Label
 import Shape
 import Words
 import Crib
@@ -27,33 +29,58 @@ ct10 = "DXKXFDXDDNDFX"
 
 pt4 = "a critic is a gong at a railroad crossing clanging loudly and vainly as the train goes by"
 
+
+--allWordSplits rest = concatMap (\ix ->
+                            --fmap (\wds -> (take (wordLengths!!ix) rest) : wds) $ allWordSplits (drop (wordLengths!!ix) rest)
+                          --) $ filter (\i-> (wordLengths!!i) <= n) [0..10]
+  --where
+--    n = length rest
+
+
+
+
 someFunc = do
-    dd <- getDict
-    ss <- getShapeDict
-    putStrLn $ unwords $ decrypt dd $ words ct1
-    putStrLn $ unwords $ decrypt dd $ words ct2
-    putStrLn $ unwords $ decrypt dd $ words ct3
-    putStrLn $ unwords $ decrypt dd $ words ct4
-    putStrLn $ unwords $ decrypt dd $ words ct5
-    putStrLn $ unwords $ decrypt dd $ words ct6
-    putStrLn $ unwords $ decrypt dd $ words ct7
-    putStrLn $ unwords $ decrypt dd $ words ct10
-    --putStrLn $ concat $ intersperse " " $ decrypt dd $ words ct8
-    --putStrLn $ concat $ intersperse " " $ decrypt dd $ words ct9
+  dd <- getDict
+  ss <- getShapeDict
+  let rest0 = "allthewords"
 
-    putStrLn $ unwords $ shapeDecrypt ss $ words ct1
-    putStrLn $ unwords $ shapeDecrypt ss $ words ct2
-    putStrLn $ unwords $ shapeDecrypt ss $ words ct3
-    putStrLn $ unwords $ shapeDecrypt ss $ words ct4
-    putStrLn $ unwords $ shapeDecrypt ss $ words ct5
-    putStrLn $ unwords $ shapeDecrypt ss $ words ct6
-    putStrLn $ unwords $ shapeDecrypt ss $ words ct7
-    putStrLn $ unwords $ shapeDecrypt ss $ words ct8
-    putStrLn $ unwords$ shapeDecrypt ss $ words ct9
-    putStrLn $ unwords $ shapeDecrypt ss $ words ct10
+  let ls = filter (\l -> llogFreq l < 1000.0) $ fmap rootLabel dd
+  putStrLn $ show ls
 
-    --cc <- getCryptogram "./data/cryptogram2.txt"
-    --putStrLn $ concat $ intersperse " " $ shapeDecrypt dd $ words cc
+  let wdss = allWordSplits dd rest0
+  let okWords = filter (\wds -> foldl (\acc wd -> acc && (isWord dd wd)) True wds) wdss
+  --print wdss
+  print $ "Length is: " ++ show (length $ wdss)
+  print okWords
+  print $ "Length is: " ++ show (length $ okWords)
+
+{-
+
+  putStrLn "This is the decrypt funtion:\n"
+  putStrLn $ unwords $ decrypt dd $ words ct1
+  putStrLn $ unwords $ decrypt dd $ words ct2
+  putStrLn $ unwords $ decrypt dd $ words ct3
+  putStrLn $ unwords $ decrypt dd $ words ct4
+  putStrLn $ unwords $ decrypt dd $ words ct5
+  putStrLn $ unwords $ decrypt dd $ words ct6
+  putStrLn $ unwords $ decrypt dd $ words ct7
+  -- These next 2 don't work - too difficult
+  --putStrLn $ unwords $ decrypt dd $ words ct8
+  --putStrLn $ unwords $ decrypt dd $ words ct9
+  putStrLn $ unwords $ decrypt dd $ words ct10
+
+  putStrLn "This is the shapeDecrypt funtion:\n"
+  putStrLn $ unwords $ shapeDecrypt ss $ words ct1
+  putStrLn $ unwords $ shapeDecrypt ss $ words ct2
+  putStrLn $ unwords $ shapeDecrypt ss $ words ct3
+  putStrLn $ unwords $ shapeDecrypt ss $ words ct4
+  putStrLn $ unwords $ shapeDecrypt ss $ words ct5
+  putStrLn $ unwords $ shapeDecrypt ss $ words ct6
+  putStrLn $ unwords $ shapeDecrypt ss $ words ct7
+  putStrLn $ unwords $ shapeDecrypt ss $ words ct8
+  putStrLn $ unwords$ shapeDecrypt ss $ words ct9
+  putStrLn $ unwords $ shapeDecrypt ss $ words ct10
+-}
 
 getCryptogram :: String -> IO String
 getCryptogram name = do

@@ -28,7 +28,7 @@ class Functor w => Comonad w where
    coreturn :: w a -> a
    cojoin     :: w a -> w (w a)
    x =>> f = fmap f (cojoin x)
-          
+
 -- Not sure why I did this, it's not used anywhere, yet.
 instance Comonad Tree where
     coreturn (Node r _) = r
@@ -47,10 +47,12 @@ wordCount d = L.sum $ L.map (lcount . rootLabel) d
 --freqDict dd = L.sum $ L.map (exp . ((-1.0)*) . logFreq . rootLabel) dd
 
 -- | Adds a new word (with it's logFreq) to a dictionary
+-- Remember Label  = Label char logFreq count
 addWord::Dict->String->Double->Dict
 addWord d [] _ =  d
-addWord [] (l:[]) f =  [Node (Label l f 1) []] 
+addWord [] [l] f =  [Node (Label l f 1) []]
 addWord [] (l:ls) f =  [Node (Label l notWord $ 1) $ addWord [] ls f]
+-- This is the last letter of that word being added
 addWord d@(t:ts) w@(l:[]) f =  case compare (lch $ lt) l of
                                  -- if equal increment and set the frequency because it's a word
                                  EQ -> [Node (Label l f $ 1 + lcount lt) (subForest t)] ++ ts
@@ -60,6 +62,7 @@ addWord d@(t:ts) w@(l:[]) f =  case compare (lch $ lt) l of
                                  GT -> [Node (Label l f $ 1) []] ++ d
                             where
                                 lt = rootLabel t
+-- This is an intermediate letter of a word bineg added
 addWord d@(t:ts) w@(l:ls) f =  case compare (lch $ lt) l of
                                  -- if equal increment, but don't change frequency, it's not the end of  word
                                  EQ -> [Node (Label l (llogFreq lt) $ 1 + lcount lt) (addWord (subForest t) ls f)] ++ ts
@@ -75,16 +78,16 @@ addWord d@(t:ts) w@(l:ls) f =  case compare (lch $ lt) l of
 isWord::Dict->String->Bool
 isWord _ [] = False
 isWord [] _ = False
-isWord dd@(t:ts) chs@(c:[]) = case compare (lch $ lt) pc of
-                                     EQ -> if isCipherText c then (L.or $ L.map (labelIsWord . rootLabel) dd ) else labelIsWord $ lt
+isWord dd@(t:ts) chs@[c] = case compare (lch lt) pc of
+                                     EQ -> if isCipherText c then any (labelIsWord . rootLabel) dd else labelIsWord lt
                                      LT -> isWord ts chs
                                      GT -> False
                               where
                                     lt = rootLabel t
                                     -- To force the comparison to be true if it's a cipher text character
                                     pc = if isCipherText c then lch lt else c
-isWord dd@(t:ts) chs@(c:cs) = case compare (lch $ lt) pc of
-                                     EQ -> if isCipherText c then (L.or $ L.map (\t2-> isWord (subForest t2) cs) dd) else isWord (subForest t) cs
+isWord dd@(t:ts) chs@(c:cs) = case compare (lch lt) pc of
+                                     EQ -> if isCipherText c then any (\t2-> isWord (subForest t2) cs) dd else isWord (subForest t) cs
                                      LT -> isWord ts chs
                                      GT -> False
                               where
@@ -118,6 +121,3 @@ wordLogFreq dd@(t:ts) chs@(c:cs) = case compare (lch $ lt) pc of
 sortedToWords :: Tree Label -> [(Double, String)]
 sortedToWords (Node l []) = if labelIsWord l then [(llogFreq l, Label.showChar l)] else []
 sortedToWords (Node l ks) = sortWith (fst) $ L.map (\(x, s) -> (x, Label.showChar l ++ s)) $ L.concatMap sortedToWords ks
-
-
-
